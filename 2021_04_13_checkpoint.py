@@ -28,23 +28,93 @@ except ImportError:
     from tkinter import filedialog
     
 from PIL import *
+from PIL import ImageTk
 import hashlib
 from bcrypt import *
 import pickle
 import os.path
 import os
 import requests
+from itertools import count, cycle 
+import math
 
 root = Tk()
 
+
+
+class ImageLabel(Label):
+    """a label that displays images, and plays them if they are gifs"""
+    def load(self, im):
+        if isinstance(im, str):
+            im = Image.open(im)
+        self.loc = 0
+        self.frames = []
+
+        try:
+            for i in count(1):
+                self.frames.append(ImageTk.PhotoImage(im.copy()))
+                im.seek(i)
+        except EOFError:
+            pass
+
+        try:
+            self.delay = im.info['duration']
+        except:
+            self.delay = 100
+
+        if len(self.frames) == 1:
+            self.config(image=self.frames[0])
+        else:
+            self.next_frame()
+
+    def unload(self):
+        self.config(image="")
+        self.frames = None
+
+    def next_frame(self):
+        if self.frames:
+            self.loc += 1
+            self.loc %= len(self.frames)
+            self.config(image=self.frames[self.loc])
+            self.after(self.delay, self.next_frame)
         
     
 def loaddict():
+    '''
+    Function to load the saved login database from the saved pickle 
+    format.
+    
+    **Parameters**
+    
+    None
+
+    **Returns**
+    
+    dictAdmin: *dict*
+        Dictionary containing encrypted login info
+    
+    '''
     with open("admin.txt", "rb") as dictAdmin:
         return pickle.load(dictAdmin)
 
         
 def savedict(dictAdmin):
+    '''
+    Function to save the login database from in a saved pickle 
+    format.
+    
+    **Parameters**
+    
+    dictAdmin: *dict*
+        Dictionary containing encrypted login info
+
+    **Returns**
+    
+    None
+
+    
+    '''
+    
     pickle.dump(dictAdmin, open("admin.txt", "wb"))
 
         
@@ -58,9 +128,21 @@ class Application(Frame):
         self.bg = PhotoImage(file="bg_img.png")
         self.grid()
         self.welcome_setup()
-
+        
     def welcome_setup(self, master=None):
-
+        '''
+        Function to set up the initial welcome screen of the GUI. Function will
+        create a canvas and set a background image, username entry and password
+        entry. It will also create buttons for log in and to create an account.
+        
+        **Parameters**
+        
+        self: *object*
+        
+        **Returns**
+        
+        None
+        '''
         # set up background image
         self.canvas = Canvas(self, width=760, height=443)
         self.canvas.pack()
@@ -113,6 +195,21 @@ class Application(Frame):
                                                                anchor="nw",
                                                                window=self.account_button)
     def login_check(self):
+        '''
+        Function that checks if the hashed username entered on the welcome string 
+        matches any of the saved hashed usernames. If usernames match, code will
+        use bcrypt.checkpw to compare saved and entered passwords. If either username 
+        or password is incorrect, an error message will pop up.
+        
+        **Parameters**
+        
+        self: *object*
+        
+        **Returns**
+        
+        None.
+
+        '''
         dictAdmin = loaddict()
         hashed_user = hashlib.sha512(self.username.get().encode()).hexdigest()
         
@@ -123,7 +220,20 @@ class Application(Frame):
             mb.showerror("Error", "Username or Password is incorrect")
         
     def create_account(self, master=None):
-        
+        '''
+        Function will first destroy the old window and set up the create an 
+        account window.
+
+        Parameters
+        ----------
+        master : TYPE, optional
+            DESCRIPTION. The default is None.
+
+        Returns
+        -------
+        None.
+
+        '''
         #destroy old window
         self.canvas.destroy()
         
@@ -174,6 +284,24 @@ class Application(Frame):
                                                             anchor="nw",
                                                             window=self.confirm)
     def check_account(self):
+        '''
+        Function begins by checking the user's directory to see if the admin
+        database exists, if it does then the dictionary is loaded, if it does
+        not exist then the dictionary is created. Function will use the bcrypt.checkpw
+        function to see if the two passwords match. If they match the window will be 
+        destroyed and the user will be prompted to log in on the main screen.
+        If they do not match an error message will appear.
+        
+        Parameters
+        ----------
+        self: *object*
+        
+        Returns
+        -------
+        None.
+
+        '''
+        
         
         if os.path.isfile('admin.txt'):
             dictAdmin = loaddict()
@@ -198,7 +326,25 @@ class Application(Frame):
             mb.showerror("Error", "Passwords Do Not Match")
     
     def fetch_file(self):
+        '''
+        Function will search the internet for the desired PDB file by following
+        the URL listed. With the file open, it will be downloaded in chunks and
+        saved to a pdb file. The file will then be read and if one of the first
+        few lines contains the error message then the file will be deleted and
+        an error message will appear. If no error message is present then the 
+        dropdown function will be called.
         
+        Parameters
+        -------
+        
+        self: *object*
+
+        Returns
+        -------
+        pdb : *file*
+            DESCRIPTION the PDB file downloaded.
+
+        '''
         #defines download url
         file_url = "https://files.rcsb.org/download/" + self.tempfile.get() +".pdb"
         
@@ -206,10 +352,10 @@ class Application(Frame):
         pdb_file = self.tempfile.get() + ".pdb"
         
         #opens blank file and fills it with downloaded data
-        with open(pdb_file, "wb") as pdb:
+        with open(pdb_file, "wb") as self.pdb:
             for chunk in r.iter_content(chunk_size=(1000)):
                 if chunk:
-                    pdb.write(chunk)
+                    self.pdb.write(chunk)
         
         #If file does not exist it be removed             
         count=0
@@ -228,22 +374,52 @@ class Application(Frame):
         if count == 0:
             self.dropdown()
                 
-        return pdb
+        return self.pdb
     
     def explorer_file(self):
-                
+        '''
+        Function will open a file explorer so the user can upload a PDB file of
+        their choosing. If the file does not end in PDB an error will pop up.
+        
+        Parameters
+        -------
+        self: *object*
+        
+        Returns
+        -------
+        self.pdb: *file*
+            DESCRIPTION the PDB file that was uploaded.
+
+        '''
         
         self.filename = filedialog.askopenfile(mode="r", initialdir="/", 
-                                                   filetypes =(("Text File", "*.txt"),("All Files","*.*")), 
+                                                   filetypes =(("All Files", "*.txt"),("All Files","*.*")), 
                                                    title = "Choose a file.")
         
+        self.pdb = self.filename.read().splitlines()
+       
          
-        self.dropdown()
-         
-        return self.filename
+        if self.pdb[0].startswith("HEADER"):
+            self.dropdown()
+            return self.pdb
+        else:
+            mb.showerror("Error", "Not a PDB file!")
+                
     
     def second_setup(self):
+        '''
+        Function to set up second window that asks users to name a PDB file
+        or upload their own PDB file.
         
+        Parameters
+        -------
+        self: *object*
+
+        Returns
+        -------
+        None.
+
+        '''
         #destroy old window
         self.canvas.destroy()
         
@@ -289,9 +465,79 @@ class Application(Frame):
         self.browse_c = self.secondWindow.create_window(330, 260,
                                                             anchor="nw",
                                                             window=self.browse)
+    #################################
+    ##NEED TO FIGURE OUT HOW TO PUT
+    ##ALL MATH IN NEW CLASS
+    ###################################
+    
+    def get_coordinates(self, line):
+        x = float(line[31:38]) #gets xyz coordinates
+        y = float(line[39:46])
+        z = float(line[47:54])
+        return [x, y, z]
+    
+    def calc_atom_dist(self, atom1_xyz, atom2_xyz):
+        atom1_x, atom1_y, atom1_z = atom1_xyz #calculates distance
+        atom2_x, atom2_y, atom2_z = atom2_xyz
+
+        dist = math.sqrt((atom1_x - atom2_x)**2 + (atom1_y - atom2_y)**2 +
+                         (atom1_z - atom2_z)**2)
+        return dist
+
+    def h_bond(self, file):
         
+        oxygen = []
+        h_bonds=[]
+        nitrogen = []
+        count = 1
+        
+        for line in self.pdb:
+            if line[:4] == "ATOM" and line[13:14] == "O":
+                oxygen.append(line.strip())
+            if line[:4] == "ATOM" and line[13:14] == "N":
+                nitrogen.append(line.strip())
+        
+        h_file = open("H_bond.txt", "a")
+        
+        for i in range(len(oxygen)):
+            o_atoms=self.get_coordinates(oxygen[i])
+            for w in range(len(nitrogen)):
+                n_atoms=self.get_coordinates(nitrogen[w])
+                h_bond_distance=self.calc_atom_dist(o_atoms, n_atoms)
+                if h_bond_distance <= 3.2:
+                    entry = str("Pair #" + str(count) +'\n' + oxygen[i]+'\n' + nitrogen[w]+'\n')
+                    h_file.write(entry)
+                    count += 1
+        h_file.close()
+        '''
+        Pick back up and print the list to the screen and add back button
+        to do another task
+        '''
+        
+        
+    def calculate_task(self):
+        
+        lbl = ImageLabel(self)
+        lbl.place(x=150, y=130)
+        photo=lbl.load('calc.gif')
+        
+        
+        if self.clicked.get() == self.options[0]:
+            self.h_bond(self.pdb)
+            
     def dropdown(self):
+        '''
+        Function to create the third screen which contains the dropdown menu.
         
+        Parameters
+        -------
+        self: *object*
+        
+        Returns
+        -------
+        None.
+
+        '''
         #destory old window
         self.secondWindow.destroy()
         
@@ -309,7 +555,7 @@ class Application(Frame):
                                     text="Choose task below",
                                     font=self.myFont_heading)
         
-        options = ["Hydrogen Bond Partners", 
+        self.options = ["Hydrogen Bond Partners", 
                    "Radius of Gyration",
                    "van der Waals Interactions",
                    "Number and Type of Secondary Structures"
@@ -317,16 +563,21 @@ class Application(Frame):
         
         self.clicked = StringVar()
         self.clicked.set("Choose Below") 
-        self.drop = OptionMenu(self, self.clicked, *options)
+        self.drop = OptionMenu(self, self.clicked, *self.options)
         
         dropdown_menu = self.thirdWindow.create_window(330, 60,
                                                        anchor="nw",
                                                        window = self.drop
                                                        )
-        '''
-        Pick back up and do commands for picking from dropdown menu
-        '''
+        self.calculate = Button(self,
+                                text="Calculate", width = 10,
+                                command = self.calculate_task)
         
+        self.calculate_c = self.thirdWindow.create_window(350, 100,
+                                                            anchor="nw",
+                                                            window=self.calculate)
+
+
 if __name__ == "__main__":
     app = Application(master=root)
     app.mainloop()
@@ -381,9 +632,4 @@ if __name__ == "__main__":
 
 
 
-
-# In[ ]:
-
-
-#https://img.theweek.in/content/dam/week/news/sci-tech/2019/May/science-research-study-biology-lab-chemistry-scientific-shut.jpg
 
