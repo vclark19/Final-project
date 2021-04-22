@@ -1,14 +1,14 @@
 # Final-project EN.540.635
-### by Vincent Clark
+#### by Vincent Clark
 
-**Goal of the project**
+## **Goal of the project**
 
 The goal of this project was to develop a GUI to process protein database (PDB) files
 and streamline the calculations for tasks including, calculating center of mass and radius of gyration,
 determining the hydrophobicity of a protein, calculating all of the hydrogen bond partners, determining
 the location of all secondary structures in the protein, etc.
 
-**Directions**
+## **Directions**
 In order to correctly use the program please have the main.py file, text_setup.txt, calc.gif, and admin.txt saved to 
 the working directory. Once downloaded, go to your bash terminal, navigate to your working, and enter the following.
 
@@ -16,7 +16,7 @@ the working directory. Once downloaded, go to your bash terminal, navigate to yo
 $ python3 main.py
 ```
 
-**Interacting with the GUI**
+## **Interacting with the GUI**
 
 Upon launching the program you will be prompted to either sign in or create an account. 
 
