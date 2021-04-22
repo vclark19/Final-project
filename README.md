@@ -27,7 +27,7 @@ for you. Or you can upload your own PDB file, if it is already saved on your com
 
 ![Capture2](https://user-images.githubusercontent.com/80633789/115449028-570ebb80-a1e8-11eb-964c-6563b360d06d.PNG)
 
-After choosing a file, please choose a taskk from the dropdown menu and click the calculate button.
+After choosing a file, please choose a task from the dropdown menu and click the calculate button.
 
 ![Capture3](https://user-images.githubusercontent.com/80633789/115449859-385cf480-a1e9-11eb-9b25-651b4a76bb71.png)
 
