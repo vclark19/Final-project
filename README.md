@@ -10,11 +10,11 @@ the location of all secondary structures in the protein, etc.
 
 **Directions**
 In order to correctly use the program please have the main.py file, text_setup.txt, calc.gif, and admin.txt saved to 
-the working directory. Once downloaded, go to your bash terminal and enter 
+the working directory. Once downloaded, go to your bash terminal, navigate to your working, and enter the following.
 
-'''
+```
 $ python3 main.py
-'''
+```
 
 **Interacting with the GUI**
 
