@@ -377,6 +377,8 @@ class Application(Frame):
         #defines download url
         file_url = "https://files.rcsb.org/download/" + self.tempfile.get() +".pdb"
         
+        self.pdb_label = self.tempfile.get() 
+        
         r = requests.get(file_url, stream = True)
         pdb_file = self.tempfile.get() + ".pdb"
         
@@ -436,6 +438,7 @@ class Application(Frame):
         
        #if the file starts with the HEADER phrase then the next screen will come up
         if self.pdb[0].startswith("HEADER"):
+            self.pdb_label = self.pdb[0][62:66]
             self.dropdown()
             return self.pdb
         #If it does not have the HEADER then an error is prompted
@@ -586,7 +589,8 @@ class Application(Frame):
                 nitrogen.append(line.strip())
         
         #opens output text file
-        self.h_file = open("H_bond.txt", "w")
+        self.h_label = "H_bond_" + self.pdb_label + ".txt"
+        self.h_file = open(self.h_label, "w")
         
         #gets coordinates for every oxygen and nitrogen atom in the lists
         #if the distance is less than or equl to 3.2 the wo atoms are added to the out
@@ -672,7 +676,7 @@ class Application(Frame):
         None.
 
         ''' 
-        
+        self.hydro_label = self.pdb_label
         #dictionary for the conversion of amino acids to FASTA format
         fasta = []
         aminoacid={}
@@ -784,10 +788,11 @@ class Application(Frame):
         plt.plot(xaxis, average_scale, 'g--', label="Octanol-Interface Scale")
         plt.ylabel("Total free energy (kcal/mol)", fontsize=16)
         plt.xlabel("Residue Number in 19 AA Window", fontsize=16)
+        plt.title("Hydrophobicity Scale of " + self.hydro_label)
         plt.legend()
-        plt.savefig("Hydrophobicity_Scale.png")
+        plt.savefig("Hydrophobicity_Scale_" + self.hydro_label + ".png")
         plt.close()
-        self.fig = PhotoImage(file="Hydrophobicity_Scale.png")
+        self.fig = PhotoImage(file="Hydrophobicity_Scale_" + self.hydro_label + ".png")
     
     def ss(self, file):
         '''
@@ -805,7 +810,9 @@ class Application(Frame):
         None.
 
         '''
-        self.sf = open("secondary_structure.txt","a")
+        self.sf_label = "secondary_structure_" + self.pdb_label + ".txt"
+        
+        self.sf = open(self.sf_label,"a")
         
         ss=[]
         
@@ -826,8 +833,67 @@ class Application(Frame):
                 sheet +=1
                 
         self.out_entry = str("There are " + str(helix) + " alpha helices and "+
-                             str(sheet)+ " beta sheets! \nFull file saved as secondary_structure.txt")
+                             str(sheet)+ " beta sheets! \nFull file saved as "+ self.sf_label)
         self.sf.close()
+    
+    def close(self, file):
+        
+        pdb_line = [i for i in self.pdb if i[:4] == "ATOM"]
+        
+        self.cc_label = "Close_contacts_" + self.pdb_label + ".txt"
+        
+        self.close_contacts = open(self.cc_label, "w")
+        count = 0
+        #Ignoring molecules on the same residue
+        for i in range(len(pdb_line)):
+            for j in range(i+1, len(pdb_line)):
+                if pdb_line[i][17:26] != pdb_line[j][17:26]:
+                    atom1_xyz = self.get_coordinates(pdb_line[i])
+                    atom2_xyz = self.get_coordinates(pdb_line[j])
+                    atom_dist = self.calc_atom_dist(atom1_xyz, atom2_xyz)
+                    if atom_dist <= 2.7:
+                        entry = str("Pair #" + str(count) +'\n' + pdb_line[i]+'\n' + pdb_line[j]+'\n')
+                        self.close_contacts.write(entry)
+                        count += 1
+        self.out_msg = str("There are " + str(count) + " van der Waals contacts!" +
+                           '\nFull details saved as ' + self.cc_label)
+        
+        self.close_contacts.close()
+    
+    def disulfide(self, file):
+        
+        pdb_line = [i for i in self.pdb if i[:4] == "ATOM" and i[17:20] == "CYS" and i[13:15] == "SG"]
+        
+        self.ds_label = "Disulfide_bonds_" + self.pdb_label + ".txt"
+       
+        
+        disulfide_txt = open(self.ds_label, "w")
+        
+        count = 0
+        
+        
+        for i in range(len(pdb_line)):
+            for j in range(i+1, len(pdb_line)):
+                if pdb_line[i][17:26] != pdb_line[j][17:26]:
+                    atom1_xyz = self.get_coordinates(pdb_line[i])
+                    atom2_xyz = self.get_coordinates(pdb_line[j])
+                    atom_dist = self.calc_atom_dist(atom1_xyz, atom2_xyz)
+                    if atom_dist <= 5:
+                        entry = str("Pair #" + str(count) +'\n' + pdb_line[i]+'\n' + pdb_line[j]+'\n')
+                        disulfide_txt.write(entry)
+                        count += 1
+        if count == 0:
+            if os.path.isfile(self.ds_label):
+                disulfide_txt.close()
+                os.remove(self.ds_label)
+                self.out_msg = str("There are no disulfide bonds in this protein!")
+                mb.showerror("Error", self.out_msg)
+            
+        if count >= 1:  
+            self.out_msg = str("There are " + str(count) + " disulfide bonds!" +
+                               '\nFull details saved as ' + self.ds_label)
+            mb.showinfo("Success!", self.out_msg)
+            disulfide_txt.close()
         
     def calculate_task(self):
         '''
@@ -844,7 +910,7 @@ class Application(Frame):
         #will output success message after it is completed
         if self.clicked.get() == self.options[0]:
             self.h_bond(self.pdb)  
-            mb.showinfo("Success!", "File saved in directory as H_bond.txt")
+            mb.showinfo("Success!", "File saved in directory as " + self.h_label)
         
         #radius of gyration function
         #will output summary of calculations after it is completed
@@ -858,7 +924,7 @@ class Application(Frame):
         
         if self.clicked.get() == self.options[2]:
             self.hydropathy(self.pdb)
-            mb.showinfo("Success!", "Graph saved in directory as Hydrophobicity Scale.png")
+            mb.showinfo("Success!", "Graph saved in directory as Hydrophobicity_Scale_" + self.hydro_label + ".png")
             self.tl = Toplevel()
             self.tl.geometry('576x432')
             self.tl.title("Hydrophobicity Scale")
@@ -873,7 +939,17 @@ class Application(Frame):
             self.ss(self.pdb)
             mb.showinfo("Success!", self.out_entry)
         
+        #close contacts function
+        #will output summary message
+        if self.clicked.get() == self.options[4]:
+            self.close(self.pdb)
+            mb.showinfo("Success!", self.out_msg)
         
+        #disulfide bond calculation function
+        if self.clicked.get() == self.options[5]:
+            self.disulfide(self.pdb)
+            
+            
     def dropdown(self):
         '''
         Function to create the third screen which contains the dropdown menu.
@@ -907,7 +983,9 @@ class Application(Frame):
         self.options = ["Hydrogen Bond Partners", 
                    "Radius of Gyration",
                    "Hydrophobicity of Protein",
-                   "Number and Type of Secondary Structures"
+                   "Number and Type of Secondary Structures",
+                   "Number and Type of Close Contacts",
+                   "Number of Disulfide Bonds"
                    ]
         
         self.clicked = StringVar()
