@@ -44,9 +44,26 @@ root = Tk()
 
 
 class ImageLabel(Label):
-    """a label that displays images, and plays them if they are gifs"""
+    """
+    a label that displays images, and plays them if they are gifs.
+    Function was taken from https://stackoverflow.com/a/43770948
+    """
 
     def load(self, im):
+        '''
+        Will load image for gif
+        
+        Parameters
+        ----------
+        
+        im: *file*
+            Image to animate
+        
+        Returns
+        ------
+        
+        None
+        '''
         if isinstance(im, str):
             im = Image.open(im)
         self.loc = 0
@@ -70,10 +87,26 @@ class ImageLabel(Label):
             self.next_frame()
 
     def unload(self):
+        '''
+        Function to configure the image.
+
+        Returns
+        -------
+        None.
+
+        '''
         self.config(image="")
         self.frames = None
 
     def next_frame(self):
+        '''
+        Function to loop through different frames in the image.
+
+        Returns
+        -------
+        None.
+
+        '''
         if self.frames:
             self.loc += 1
             self.loc %= len(self.frames)
